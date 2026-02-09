@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Armonía Negativa Pro - Batch Engine</title>
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@tonejs/midi@2.0.28/build/Midi.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@magenta/music@1.23.1/dist/magentamusic.min.js"></script>
+    <!-- Librería para compresión ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #0f172a, #1e1b4b, #312e81);
+            min-height: 100vh;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 1rem;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        .btn-magic {
+            background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+            background-size: 200% 200%;
+            animation: gradient-anim 3s ease infinite;
+            transition: all 0.3s ease;
+        }
+        @keyframes gradient-anim {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+            background: #ffffff; cursor: pointer; margin-top: -5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer;
+            background: rgba(255, 255, 255, 0.2); border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden transition-all duration-500">
+        <!-- Background accents -->
+        <div class="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px]"></div>
+        <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-[80px]"></div>
+
+        <div class="text-center mb-6 relative z-10">
+            <h1 class="text-4xl md:text-5xl font-black mb-1 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-tighter">
+                Armonía Negativa <span class="text-sm align-top bg-indigo-500 text-white px-2 py-0.5 rounded-full ml-1">PRO</span>
+            </h1>
+            <p class="text-indigo-200/50 text-[10px] font-bold uppercase tracking-[0.3em]">Procesamiento por lotes (Hasta 50 archivos)</p>
+        </div>
+
+        <div id="status-area" class="mb-4 text-center h-5 text-xs font-medium text-indigo-300 transition-all duration-300"></div>
+
+        <!-- STEP 0: INIT -->
+        <div id="step-0" class="relative z-10">
+            <div class="p-8 bg-slate-900/50 rounded-2xl border border-white/10 text-center">
+                <i class="fas fa-microchip text-4xl text-indigo-400 mb-4"></i>
+                <h3 class="text-xl font-bold text-white mb-2">Preparar Motor de Audio</h3>
+                <p class="text-sm text-slate-400 mb-6">Cargando 128 instrumentos para procesamiento instantáneo.</p>
+                <button id="init-btn" class="btn-magic w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-3">
+                    <span id="init-text">INICIAR SISTEMA</span>
+                    <i id="init-icon" class="fas fa-bolt"></i>
+                </button>
+                <div id="loader-bar-container" class="w-full bg-slate-700 h-2 rounded-full mt-6 hidden overflow-hidden">
+                    <div id="loader-bar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 1: MULTI-UPLOAD -->
+        <div id="step-1" class="hidden relative z-10">
+            <input type="file" id="midi-input" accept=".mid,.midi" multiple class="hidden">
+            <label for="midi-input" class="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-slate-600/50 rounded-2xl p-10 group transition-all hover:border-indigo-500/50 bg-slate-900/20">
+                <div class="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-all duration-300">
+                    <i class="fas fa-cloud-upload-alt text-2xl text-indigo-400 group-hover:scale-110 transition-transform"></i>
+                </div>
+                <span class="text-lg font-bold text-slate-200">Seleccionar Archivos</span>
+                <span class="text-xs text-slate-500 mt-2">Puedes subir hasta 50 archivos MIDI</span>
+            </label>
+        </div>
+
+        <!-- STEP 2: BATCH QUEUE -->
+        <div id="step-2" class="hidden relative z-10 flex flex-col h-[450px]">
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="text-sm font-bold text-indigo-300 uppercase tracking-widest">Cola de Procesamiento</h3>
+                <span id="queue-count" class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">0 Archivos</span>
+            </div>
+            
+            <div id="file-queue" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 mb-4">
+                <!-- File items injection -->
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button id="process-all-btn" class="btn-magic py-4 rounded-xl text-white font-bold shadow-lg flex items-center justify-center gap-2 order-1">
+                    <i class="fas fa-wand-magic-sparkles"></i> PROCESAR TODO
+                </button>
+                <button id="download-zip-btn" class="hidden bg-emerald-600 hover:bg-emerald-500 py-4 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-colors shadow-lg order-2">
+                    <i class="fas fa-file-archive"></i> DESCARGAR ZIP
+                </button>
+                <button id="clear-queue-btn" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-xl text-slate-300 font-bold flex items-center justify-center gap-2 transition-colors order-3 sm:col-span-2">
+                    <i class="fas fa-trash-alt"></i> LIMPIAR COLA
+                </button>
+            </div>
+        </div>
+
+        <!-- PLAYER OVERLAY -->
+        <div id="player-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/20">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="overflow-hidden">
+                        <h4 class="text-xs font-bold text-indigo-400 uppercase">Previsualización</h4>
+                        <p id="preview-name" class="text-sm font-medium text-white truncate"></p>
+                    </div>
+                    <button id="close-player" class="text-slate-500 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <button id="play-btn" class="w-full bg-indigo-600 text-white py-4 rounded-xl flex items-center justify-center gap-3 font-bold">
+                        <i id="play-icon" class="fas fa-play"></i> <span id="play-text">ESCUCHAR</span>
+                    </button>
+                    
+                    <div class="px-1">
+                        <div class="flex justify-between text-[10px] text-indigo-300/70 mb-1 font-mono">
+                            <span id="current-time">0:00</span>
+                            <span id="total-time">0:00</span>
+                        </div>
+                        <input type="range" id="seek-slider" min="0" max="100" value="0" step="0.1">
+                    </div>
+
+                    <div class="flex items-center gap-3 bg-black/20 rounded-lg p-2 border border-white/5">
+                        <i class="fas fa-volume-up text-indigo-400 text-xs"></i>
+                        <input type="range" id="volume-slider" min="-30" max="0" value="-5" step="1">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const player = new mm.SoundFontPlayer('https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus');
+        
+        const state = {
+            files: [], 
+            currentIndex: null,
+            isPlaying: false,
+            playbackInterval: null
+        };
+
+        // DOM
+        const step0 = document.getElementById('step-0');
+        const step1 = document.getElementById('step-1');
+        const step2 = document.getElementById('step-2');
+        const initBtn = document.getElementById('init-btn');
+        const loaderBar = document.getElementById('loader-bar');
+        const statusArea = document.getElementById('status-area');
+        const fileInput = document.getElementById('midi-input');
+        const fileQueue = document.getElementById('file-queue');
+        const queueCount = document.getElementById('queue-count');
+        const playerModal = document.getElementById('player-modal');
+        const zipBtn = document.getElementById('download-zip-btn');
+        
+        // --- 1. INITIALIZATION ---
+        initBtn.onclick = async () => {
+            initBtn.disabled = true;
+            document.getElementById('init-text').textContent = "CARGANDO BANCO...";
+            document.getElementById('loader-bar-container').classList.remove('hidden');
+            
+            try {
+                if (mm.Player.tone && mm.Player.tone.context.state !== 'running') await mm.Player.tone.context.resume();
+                
+                const dummy = { notes: Array.from({length: 128}, (_, i) => ({pitch: 60, startTime: 0, endTime: 0.1, program: i})), totalTime: 1 };
+                loaderBar.style.width = "40%";
+                await player.loadSamples(dummy);
+                loaderBar.style.width = "100%";
+
+                setTimeout(() => {
+                    step0.classList.add('hidden');
+                    step1.classList.remove('hidden');
+                    showStatus("✅ Motor listo para múltiples archivos", "text-emerald-400");
+                }, 400);
+            } catch (e) {
+                showStatus("❌ Error al cargar sonidos", "text-rose-400");
+            }
+        };
+
+        // --- 2. FILE SELECTION ---
+        fileInput.onchange = async (e) => {
+            const uploaded = Array.from(e.target.files).slice(0, 50);
+            if (uploaded.length === 0) return;
+
+            showStatus(`Cargando ${uploaded.length} archivos...`, "text-indigo-300");
+
+            for (const file of uploaded) {
+                const buffer = await file.arrayBuffer();
+                state.files.push({
+                    name: file.name,
+                    originalBuffer: buffer,
+                    transformedBinary: null,
+                    noteSequence: null,
+                    status: 'pending'
+                });
+            }
+
+            renderQueue();
+            step1.classList.add('hidden');
+            step2.classList.remove('hidden');
+            zipBtn.classList.add('hidden');
+            showStatus("", "");
+        };
+
+        function renderQueue() {
+            fileQueue.innerHTML = '';
+            queueCount.textContent = `${state.files.length} Archivos`;
+
+            state.files.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = "bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-3 group transition-all hover:bg-white/10";
+                
+                const statusIcon = file.status === 'done' ? '<i class="fas fa-check-circle text-emerald-400"></i>' : 
+                                   file.status === 'error' ? '<i class="fas fa-exclamation-circle text-rose-400"></i>' :
+                                   '<i class="far fa-clock text-slate-500"></i>';
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden flex-1">
+                        <span class="text-xs">${statusIcon}</span>
+                        <span class="text-xs font-medium truncate text-slate-300">${file.name}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        ${file.status === 'done' ? `
+                            <button onclick="previewFile(${index})" class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all">
+                                <i class="fas fa-play text-[10px]"></i>
+                            </button>
+                            <button onclick="downloadFile(${index})" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
+                                <i class="fas fa-download text-[10px]"></i>
+                            </button>
+                        ` : ''}
+                        <button onclick="removeFile(${index})" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400/50 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
+                            <i class="fas fa-times text-[10px]"></i>
+                        </button>
+                    </div>
+                `;
+                fileQueue.appendChild(item);
+            });
+        }
+
+        // --- 3. BATCH PROCESSING ---
+        document.getElementById('process-all-btn').onclick = async () => {
+            const btn = document.getElementById('process-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> PROCESANDO...';
+            
+            let successCount = 0;
+            for (let i = 0; i < state.files.length; i++) {
+                if (state.files[i].status === 'done') {
+                    successCount++;
+                    continue;
+                }
+                
+                try {
+                    showStatus(`Procesando: ${state.files[i].name}`, "text-indigo-300");
+                    await transformMidi(i);
+                    state.files[i].status = 'done';
+                    successCount++;
+                } catch (e) {
+                    state.files[i].status = 'error';
+                }
+                renderQueue();
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> PROCESAR TODO';
+            
+            if (successCount > 0) {
+                zipBtn.classList.remove('hidden');
+                showStatus(`✨ Lote listo (${successCount} archivos)`, "text-emerald-400");
+            }
+        };
+
+        async function transformMidi(index) {
+            const fileData = state.files[index];
+            const midi = new Midi(fileData.originalBuffer);
+            const trackMap = [];
+
+            midi.tracks.forEach((track) => {
+                const isDrum = track.channel === 9 || track.instrument.percussion || 
+                              ['drum', 'perc', 'bat'].some(k => (track.name + track.instrument.name).toLowerCase().includes(k));
+                
+                if (track.notes.length > 0) trackMap.push({ program: track.instrument.number, isDrum });
+
+                if (!isDrum) {
+                    track.notes.forEach(note => {
+                        let inv = 127 - note.midi;
+                        while (inv > note.midi + 7) inv -= 12;
+                        while (inv < note.midi - 7) inv += 12;
+                        note.midi = Math.max(0, Math.min(127, inv));
+                    });
+                }
+            });
+
+            fileData.transformedBinary = new Uint8Array(midi.toArray());
+            const blob = new Blob([fileData.transformedBinary], { type: 'audio/midi' });
+            fileData.noteSequence = await mm.blobToNoteSequence(blob);
+
+            fileData.noteSequence.notes.forEach(n => {
+                const info = trackMap[n.instrument];
+                if (info) {
+                    n.isDrum = info.isDrum;
+                    if (!info.isDrum) n.program = info.program;
+                }
+            });
+        }
+
+        // --- 4. ZIP GENERATION ---
+        zipBtn.onclick = async () => {
+            const zip = new JSZip();
+            const folder = zip.folder("Midis_Negativos");
+            
+            let addedCount = 0;
+            state.files.forEach(file => {
+                if (file.status === 'done' && file.transformedBinary) {
+                    const fileName = file.name.replace(/\.midi?$/i, '') + "_NEGATIVO.mid";
+                    folder.file(fileName, file.transformedBinary);
+                    addedCount++;
+                }
+            });
+
+            if (addedCount === 0) return;
+
+            zipBtn.disabled = true;
+            zipBtn.innerHTML = '<i class="fas fa-sync fa-spin"></i> COMPRIMIENDO...';
+
+            const content = await zip.generateAsync({ type: "blob" });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Armonia_Negativa_Batch.zip";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            zipBtn.disabled = false;
+            zipBtn.innerHTML = '<i class="fas fa-file-archive"></i> DESCARGAR ZIP';
+            showStatus("📦 Archivo ZIP generado con éxito", "text-emerald-400");
+        };
+
+        // --- 5. PLAYER & ACTIONS ---
+        window.previewFile = (index) => {
+            state.currentIndex = index;
+            const file = state.files[index];
+            document.getElementById('preview-name').textContent = file.name;
+            document.getElementById('total-time').textContent = formatTime(file.noteSequence.totalTime);
+            document.getElementById('seek-slider').max = file.noteSequence.totalTime;
+            document.getElementById('seek-slider').value = 0;
+            playerModal.classList.remove('hidden');
+        };
+
+        document.getElementById('play-btn').onclick = async () => {
+            if (player.isPlaying()) stopPlayback(); else startPlayback();
+        };
+
+        async function startPlayback() {
+            const file = state.files[state.currentIndex];
+            const playIcon = document.getElementById('play-icon');
+            const playText = document.getElementById('play-text');
+            const seekSlider = document.getElementById('seek-slider');
+            
+            playIcon.className = "fas fa-stop";
+            playText.textContent = "DETENER";
+            
+            const startAt = parseFloat(seekSlider.value);
+            let seq = file.noteSequence;
+            if(startAt > 0) seq = mm.sequences.trim(file.noteSequence, startAt, file.noteSequence.totalTime);
+
+            player.start(seq).then(stopPlayback);
+
+            const startTime = Date.now();
+            state.playbackInterval = setInterval(() => {
+                const current = startAt + (Date.now() - startTime) / 1000;
+                if (current < file.noteSequence.totalTime) {
+                    seekSlider.value = current;
+                    document.getElementById('current-time').textContent = formatTime(current);
+                }
+            }, 100);
+        }
+
+        function stopPlayback() {
+            player.stop();
+            clearInterval(state.playbackInterval);
+            document.getElementById('play-icon').className = "fas fa-play";
+            document.getElementById('play-text').textContent = "ESCUCHAR";
+        }
+
+        window.downloadFile = (index) => {
+            const file = state.files[index];
+            const blob = new Blob([file.transformedBinary], { type: "audio/midi" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name.replace(/\.midi?$/i, '') + "_NEGATIVO.mid";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
+        window.removeFile = (index) => {
+            state.files.splice(index, 1);
+            if (state.files.length === 0) {
+                step2.classList.add('hidden');
+                step1.classList.remove('hidden');
+            }
+            renderQueue();
+            const anyDone = state.files.some(f => f.status === 'done');
+            if (!anyDone) zipBtn.classList.add('hidden');
+        };
+
+        document.getElementById('clear-queue-btn').onclick = () => {
+            state.files = [];
+            step2.classList.add('hidden');
+            step1.classList.remove('hidden');
+            zipBtn.classList.add('hidden');
+            showStatus("Cola vaciada", "text-indigo-300");
+        };
+
+        document.getElementById('close-player').onclick = () => {
+            stopPlayback();
+            playerModal.classList.add('hidden');
+        };
+
+        function formatTime(sec) {
+            if (!sec || sec < 0) return "0:00";
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function showStatus(msg, cls) {
+            statusArea.textContent = msg;
+            statusArea.className = `mb-4 text-center h-5 text-xs font-medium transition-all duration-300 ${cls}`;
+        }
+        
+        document.getElementById('volume-slider').oninput = (e) => {
+            if (mm.Player.tone) mm.Player.tone.Destination.volume.rampTo(parseFloat(e.target.value), 0.1);
+        };
+    </script>
+</body>
+</html>

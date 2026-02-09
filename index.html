@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/@tonejs/midi@2.0.28/build/Midi.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music@1.23.1/dist/magentamusic.min.js"></script>
-    <!-- Librería para compresión ZIP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
@@ -62,7 +61,6 @@
 </head>
 <body>
     <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden transition-all duration-500">
-        <!-- Background accents -->
         <div class="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px]"></div>
         <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-[80px]"></div>
 
@@ -70,19 +68,19 @@
             <h1 class="text-4xl md:text-5xl font-black mb-1 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-tighter">
                 Armonía Negativa <span class="text-sm align-top bg-indigo-500 text-white px-2 py-0.5 rounded-full ml-1">PRO</span>
             </h1>
-            <p class="text-indigo-200/50 text-[10px] font-bold uppercase tracking-[0.3em]">Procesamiento por lotes (Hasta 50 archivos)</p>
+            <p class="text-indigo-200/50 text-[10px] font-bold uppercase tracking-[0.3em]">Procesamiento de Lotes Sin Mezclas</p>
         </div>
 
         <div id="status-area" class="mb-4 text-center h-5 text-xs font-medium text-indigo-300 transition-all duration-300"></div>
 
-        <!-- STEP 0: INIT -->
+        <!-- PASO 0: INICIALIZACIÓN -->
         <div id="step-0" class="relative z-10">
             <div class="p-8 bg-slate-900/50 rounded-2xl border border-white/10 text-center">
-                <i class="fas fa-microchip text-4xl text-indigo-400 mb-4"></i>
-                <h3 class="text-xl font-bold text-white mb-2">Preparar Motor de Audio</h3>
-                <p class="text-sm text-slate-400 mb-6">Cargando 128 instrumentos para procesamiento instantáneo.</p>
+                <i class="fas fa-shield-virus text-4xl text-indigo-400 mb-4"></i>
+                <h3 class="text-xl font-bold text-white mb-2">Motor de Aislamiento MIDI</h3>
+                <p class="text-sm text-slate-400 mb-6">Cargando bancos de sonidos completos para máxima fidelidad.</p>
                 <button id="init-btn" class="btn-magic w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-3">
-                    <span id="init-text">INICIAR SISTEMA</span>
+                    <span id="init-text">ACTIVAR MOTOR</span>
                     <i id="init-icon" class="fas fa-bolt"></i>
                 </button>
                 <div id="loader-bar-container" class="w-full bg-slate-700 h-2 rounded-full mt-6 hidden overflow-hidden">
@@ -91,56 +89,54 @@
             </div>
         </div>
 
-        <!-- STEP 1: MULTI-UPLOAD -->
+        <!-- PASO 1: SUBIDA MÚLTIPLE -->
         <div id="step-1" class="hidden relative z-10">
             <input type="file" id="midi-input" accept=".mid,.midi" multiple class="hidden">
             <label for="midi-input" class="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-slate-600/50 rounded-2xl p-10 group transition-all hover:border-indigo-500/50 bg-slate-900/20">
                 <div class="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-all duration-300">
-                    <i class="fas fa-cloud-upload-alt text-2xl text-indigo-400 group-hover:scale-110 transition-transform"></i>
+                    <i class="fas fa-layer-group text-2xl text-indigo-400 group-hover:scale-110 transition-transform"></i>
                 </div>
-                <span class="text-lg font-bold text-slate-200">Seleccionar Archivos</span>
-                <span class="text-xs text-slate-500 mt-2">Puedes subir hasta 50 archivos MIDI</span>
+                <span class="text-lg font-bold text-slate-200">Subir Lote de Archivos</span>
+                <span class="text-xs text-slate-500 mt-2">Cada archivo se procesará en una memoria aislada</span>
             </label>
         </div>
 
-        <!-- STEP 2: BATCH QUEUE -->
+        <!-- PASO 2: COLA -->
         <div id="step-2" class="hidden relative z-10 flex flex-col h-[450px]">
             <div class="flex justify-between items-end mb-4">
-                <h3 class="text-sm font-bold text-indigo-300 uppercase tracking-widest">Cola de Procesamiento</h3>
+                <h3 class="text-sm font-bold text-indigo-300 uppercase tracking-widest">Cola de Trabajo</h3>
                 <span id="queue-count" class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">0 Archivos</span>
             </div>
             
-            <div id="file-queue" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 mb-4">
-                <!-- File items injection -->
-            </div>
+            <div id="file-queue" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 mb-4"></div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button id="process-all-btn" class="btn-magic py-4 rounded-xl text-white font-bold shadow-lg flex items-center justify-center gap-2 order-1">
-                    <i class="fas fa-wand-magic-sparkles"></i> PROCESAR TODO
+                    <i class="fas fa-microchip"></i> PROCESAR LOTE
                 </button>
                 <button id="download-zip-btn" class="hidden bg-emerald-600 hover:bg-emerald-500 py-4 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-colors shadow-lg order-2">
-                    <i class="fas fa-file-archive"></i> DESCARGAR ZIP
+                    <i class="fas fa-file-archive"></i> DESCARGAR ZIP FINAL
                 </button>
                 <button id="clear-queue-btn" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-xl text-slate-300 font-bold flex items-center justify-center gap-2 transition-colors order-3 sm:col-span-2">
-                    <i class="fas fa-trash-alt"></i> LIMPIAR COLA
+                    <i class="fas fa-trash-alt"></i> REINICIAR TODO
                 </button>
             </div>
         </div>
 
-        <!-- PLAYER OVERLAY -->
-        <div id="player-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <!-- REPRODUCTOR -->
+        <div id="player-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-white/20">
                 <div class="flex justify-between items-start mb-6">
                     <div class="overflow-hidden">
-                        <h4 class="text-xs font-bold text-indigo-400 uppercase">Previsualización</h4>
+                        <h4 class="text-xs font-bold text-indigo-400 uppercase">Previsualización Segura</h4>
                         <p id="preview-name" class="text-sm font-medium text-white truncate"></p>
                     </div>
-                    <button id="close-player" class="text-slate-500 hover:text-white"><i class="fas fa-times"></i></button>
+                    <button id="close-player" class="text-slate-500 hover:text-white p-2"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="space-y-4">
-                    <button id="play-btn" class="w-full bg-indigo-600 text-white py-4 rounded-xl flex items-center justify-center gap-3 font-bold">
-                        <i id="play-icon" class="fas fa-play"></i> <span id="play-text">ESCUCHAR</span>
+                    <button id="play-btn" class="w-full bg-indigo-600 text-white py-4 rounded-xl flex items-center justify-center gap-3 font-bold hover:bg-indigo-500 transition-colors">
+                        <i id="play-icon" class="fas fa-play"></i> <span id="play-text">REPRODUCIR</span>
                     </button>
                     
                     <div class="px-1">
@@ -161,16 +157,18 @@
     </div>
 
     <script>
+        // Inicialización del reproductor con el banco de alta fidelidad SGM Plus
         const player = new mm.SoundFontPlayer('https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus');
         
         const state = {
             files: [], 
             currentIndex: null,
-            isPlaying: false,
-            playbackInterval: null
+            playbackInterval: null,
+            startTime: 0,
+            pauseOffset: 0,
+            isSeeking: false
         };
 
-        // DOM
         const step0 = document.getElementById('step-0');
         const step1 = document.getElementById('step-1');
         const step2 = document.getElementById('step-2');
@@ -183,42 +181,54 @@
         const playerModal = document.getElementById('player-modal');
         const zipBtn = document.getElementById('download-zip-btn');
         
-        // --- 1. INITIALIZATION ---
+        // --- MOTOR ---
         initBtn.onclick = async () => {
             initBtn.disabled = true;
-            document.getElementById('init-text').textContent = "CARGANDO BANCO...";
+            document.getElementById('init-text').textContent = "CARGANDO SONIDOS...";
             document.getElementById('loader-bar-container').classList.remove('hidden');
             
             try {
                 if (mm.Player.tone && mm.Player.tone.context.state !== 'running') await mm.Player.tone.context.resume();
                 
-                const dummy = { notes: Array.from({length: 128}, (_, i) => ({pitch: 60, startTime: 0, endTime: 0.1, program: i})), totalTime: 1 };
+                // Precarga de instrumentos principales de SGM Plus para evitar delays luego
+                const initSequence = { 
+                    notes: [
+                        {pitch: 60, startTime: 0, endTime: 0.1, program: 0}, // Piano
+                        {pitch: 62, startTime: 0, endTime: 0.1, program: 24}, // Guitarra
+                        {pitch: 64, startTime: 0, endTime: 0.1, program: 32}, // Bajo
+                        {pitch: 60, startTime: 0, endTime: 0.1, isDrum: true}  // Batería
+                    ], 
+                    totalTime: 0.2 
+                };
+                
                 loaderBar.style.width = "40%";
-                await player.loadSamples(dummy);
+                await player.loadSamples(initSequence);
                 loaderBar.style.width = "100%";
 
                 setTimeout(() => {
                     step0.classList.add('hidden');
                     step1.classList.remove('hidden');
-                    showStatus("✅ Motor listo para múltiples archivos", "text-emerald-400");
+                    showStatus("✅ Motor de alta fidelidad activo", "text-emerald-400");
                 }, 400);
             } catch (e) {
+                console.error(e);
                 showStatus("❌ Error al cargar sonidos", "text-rose-400");
+                initBtn.disabled = false;
+                document.getElementById('init-text').textContent = "REINTENTAR";
             }
         };
 
-        // --- 2. FILE SELECTION ---
+        // --- CARGA ---
         fileInput.onchange = async (e) => {
             const uploaded = Array.from(e.target.files).slice(0, 50);
             if (uploaded.length === 0) return;
 
-            showStatus(`Cargando ${uploaded.length} archivos...`, "text-indigo-300");
-
             for (const file of uploaded) {
                 const buffer = await file.arrayBuffer();
                 state.files.push({
+                    id: Math.random().toString(36).substring(2, 10),
                     name: file.name,
-                    originalBuffer: buffer,
+                    originalBuffer: new Uint8Array(buffer).slice(0).buffer,
                     transformedBinary: null,
                     noteSequence: null,
                     status: 'pending'
@@ -229,7 +239,7 @@
             step1.classList.add('hidden');
             step2.classList.remove('hidden');
             zipBtn.classList.add('hidden');
-            showStatus("", "");
+            fileInput.value = "";
         };
 
         function renderQueue() {
@@ -238,15 +248,15 @@
 
             state.files.forEach((file, index) => {
                 const item = document.createElement('div');
-                item.className = "bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-3 group transition-all hover:bg-white/10";
+                item.className = "bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-3";
                 
-                const statusIcon = file.status === 'done' ? '<i class="fas fa-check-circle text-emerald-400"></i>' : 
-                                   file.status === 'error' ? '<i class="fas fa-exclamation-circle text-rose-400"></i>' :
-                                   '<i class="far fa-clock text-slate-500"></i>';
+                const icon = file.status === 'done' ? 'fa-check-circle text-emerald-400' : 
+                             file.status === 'error' ? 'fa-exclamation-circle text-rose-400' :
+                             'fa-clock text-slate-500';
 
                 item.innerHTML = `
                     <div class="flex items-center gap-3 overflow-hidden flex-1">
-                        <span class="text-xs">${statusIcon}</span>
+                        <i class="fas ${icon} text-xs"></i>
                         <span class="text-xs font-medium truncate text-slate-300">${file.name}</span>
                     </div>
                     <div class="flex gap-2">
@@ -254,12 +264,9 @@
                             <button onclick="previewFile(${index})" class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all">
                                 <i class="fas fa-play text-[10px]"></i>
                             </button>
-                            <button onclick="downloadFile(${index})" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
-                                <i class="fas fa-download text-[10px]"></i>
-                            </button>
                         ` : ''}
                         <button onclick="removeFile(${index})" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400/50 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
-                            <i class="fas fa-times text-[10px]"></i>
+                            <i class="fas fa-trash text-[10px]"></i>
                         </button>
                     </div>
                 `;
@@ -267,24 +274,20 @@
             });
         }
 
-        // --- 3. BATCH PROCESSING ---
+        // --- TRANSFORMACIÓN ---
         document.getElementById('process-all-btn').onclick = async () => {
             const btn = document.getElementById('process-all-btn');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> PROCESANDO...';
+            btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> PROCESANDO...';
             
-            let successCount = 0;
+            let count = 0;
             for (let i = 0; i < state.files.length; i++) {
-                if (state.files[i].status === 'done') {
-                    successCount++;
-                    continue;
-                }
-                
+                if (state.files[i].status === 'done') { count++; continue; }
                 try {
-                    showStatus(`Procesando: ${state.files[i].name}`, "text-indigo-300");
-                    await transformMidi(i);
+                    showStatus(`Transformando armonía: ${state.files[i].name}`, "text-indigo-300");
+                    await processIsolatedFile(i);
                     state.files[i].status = 'done';
-                    successCount++;
+                    count++;
                 } catch (e) {
                     state.files[i].status = 'error';
                 }
@@ -292,26 +295,20 @@
             }
 
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> PROCESAR TODO';
-            
-            if (successCount > 0) {
-                zipBtn.classList.remove('hidden');
-                showStatus(`✨ Lote listo (${successCount} archivos)`, "text-emerald-400");
-            }
+            btn.innerHTML = '<i class="fas fa-microchip"></i> PROCESAR LOTE';
+            if (count > 0) zipBtn.classList.remove('hidden');
+            showStatus(count > 0 ? `✨ Lote completado` : "", "text-emerald-400");
         };
 
-        async function transformMidi(index) {
-            const fileData = state.files[index];
-            const midi = new Midi(fileData.originalBuffer);
-            const trackMap = [];
+        async function processIsolatedFile(index) {
+            const file = state.files[index];
+            const localMidi = new Midi(file.originalBuffer.slice(0)); 
+            const mapping = [];
 
-            midi.tracks.forEach((track) => {
-                const isDrum = track.channel === 9 || track.instrument.percussion || 
-                              ['drum', 'perc', 'bat'].some(k => (track.name + track.instrument.name).toLowerCase().includes(k));
-                
-                if (track.notes.length > 0) trackMap.push({ program: track.instrument.number, isDrum });
-
-                if (!isDrum) {
+            localMidi.tracks.forEach((track, tid) => {
+                const isPerc = track.channel === 9 || track.instrument.percussion;
+                mapping[tid] = { prog: track.instrument.number, isPerc };
+                if (!isPerc) {
                     track.notes.forEach(note => {
                         let inv = 127 - note.midi;
                         while (inv > note.midi + 7) inv -= 12;
@@ -321,128 +318,162 @@
                 }
             });
 
-            fileData.transformedBinary = new Uint8Array(midi.toArray());
-            const blob = new Blob([fileData.transformedBinary], { type: 'audio/midi' });
-            fileData.noteSequence = await mm.blobToNoteSequence(blob);
+            file.transformedBinary = new Uint8Array(localMidi.toArray()).slice(0);
+            const blob = new Blob([file.transformedBinary], { type: 'audio/midi' });
+            let ns = await mm.blobToNoteSequence(blob);
+            
+            // CORRECCIÓN DE LATENCIA: Eliminar silencios iniciales de la secuencia
+            if (ns.notes.length > 0) {
+                const firstNoteTime = Math.min(...ns.notes.map(n => n.startTime));
+                if (firstNoteTime > 0) {
+                    ns.notes.forEach(n => {
+                        n.startTime -= firstNoteTime;
+                        n.endTime -= firstNoteTime;
+                    });
+                    ns.totalTime -= firstNoteTime;
+                }
+            }
 
-            fileData.noteSequence.notes.forEach(n => {
-                const info = trackMap[n.instrument];
-                if (info) {
-                    n.isDrum = info.isDrum;
-                    if (!info.isDrum) n.program = info.program;
+            ns.notes.forEach(n => {
+                const m = mapping[n.instrument];
+                if (m) {
+                    n.isDrum = m.isPerc;
+                    if (!m.isPerc) n.program = m.prog;
                 }
             });
+            
+            file.noteSequence = ns;
+            // Aseguramos carga de patches específicos
+            await player.loadSamples(ns);
         }
 
-        // --- 4. ZIP GENERATION ---
+        // --- ZIP ---
         zipBtn.onclick = async () => {
             const zip = new JSZip();
             const folder = zip.folder("Midis_Negativos");
-            
-            let addedCount = 0;
-            state.files.forEach(file => {
-                if (file.status === 'done' && file.transformedBinary) {
-                    const fileName = file.name.replace(/\.midi?$/i, '') + "_NEGATIVO.mid";
-                    folder.file(fileName, file.transformedBinary);
-                    addedCount++;
+            let idx = 1;
+            state.files.forEach(f => {
+                if (f.status === 'done' && f.transformedBinary) {
+                    const uniqueFileName = `${idx}_${f.name.replace(/\.[^/.]+$/, "")}_NEGATIVO.mid`;
+                    folder.file(uniqueFileName, f.transformedBinary.slice(0));
+                    idx++;
                 }
             });
-
-            if (addedCount === 0) return;
-
-            zipBtn.disabled = true;
-            zipBtn.innerHTML = '<i class="fas fa-sync fa-spin"></i> COMPRIMIENDO...';
-
-            const content = await zip.generateAsync({ type: "blob" });
-            const url = URL.createObjectURL(content);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "Armonia_Negativa_Batch.zip";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            zipBtn.disabled = false;
-            zipBtn.innerHTML = '<i class="fas fa-file-archive"></i> DESCARGAR ZIP';
-            showStatus("📦 Archivo ZIP generado con éxito", "text-emerald-400");
+            const blobZip = await zip.generateAsync({ type: "blob" });
+            const url = URL.createObjectURL(blobZip);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `Pack_Armonia_Negativa_${Date.now()}.zip`;
+            link.click();
         };
 
-        // --- 5. PLAYER & ACTIONS ---
+        // --- REPRODUCTOR CON SEEK ---
         window.previewFile = (index) => {
+            stopPlayback();
             state.currentIndex = index;
+            state.pauseOffset = 0;
             const file = state.files[index];
             document.getElementById('preview-name').textContent = file.name;
             document.getElementById('total-time').textContent = formatTime(file.noteSequence.totalTime);
             document.getElementById('seek-slider').max = file.noteSequence.totalTime;
             document.getElementById('seek-slider').value = 0;
+            document.getElementById('current-time').textContent = "0:00";
             playerModal.classList.remove('hidden');
         };
 
-        document.getElementById('play-btn').onclick = async () => {
-            if (player.isPlaying()) stopPlayback(); else startPlayback();
+        document.getElementById('play-btn').onclick = () => {
+            if (player.isPlaying()) {
+                state.pauseOffset = parseFloat(document.getElementById('seek-slider').value);
+                stopPlayback();
+            } else {
+                startPlayback(state.pauseOffset);
+            }
         };
 
-        async function startPlayback() {
+        // Lógica de adelantar con el puntero
+        const seekSlider = document.getElementById('seek-slider');
+        seekSlider.onmousedown = () => state.isSeeking = true;
+        seekSlider.onmouseup = () => {
+            state.isSeeking = false;
+            const wasPlaying = player.isPlaying();
+            const newPos = parseFloat(seekSlider.value);
+            state.pauseOffset = newPos;
+            
+            if (wasPlaying) {
+                stopPlayback();
+                startPlayback(newPos);
+            } else {
+                document.getElementById('current-time').textContent = formatTime(newPos);
+            }
+        };
+
+        seekSlider.ontouchstart = () => state.isSeeking = true;
+        seekSlider.ontouchend = () => {
+            state.isSeeking = false;
+            const newPos = parseFloat(seekSlider.value);
+            state.pauseOffset = newPos;
+            if (player.isPlaying()) { stopPlayback(); startPlayback(newPos); }
+        };
+
+        async function startPlayback(startTimeSeconds = 0) {
             const file = state.files[state.currentIndex];
             const playIcon = document.getElementById('play-icon');
             const playText = document.getElementById('play-text');
-            const seekSlider = document.getElementById('seek-slider');
             
             playIcon.className = "fas fa-stop";
             playText.textContent = "DETENER";
             
-            const startAt = parseFloat(seekSlider.value);
-            let seq = file.noteSequence;
-            if(startAt > 0) seq = mm.sequences.trim(file.noteSequence, startAt, file.noteSequence.totalTime);
+            let seqToPlay = file.noteSequence;
+            // Trim de la secuencia para empezar desde el punto elegido (Seek)
+            if (startTimeSeconds > 0.01) {
+                try {
+                    seqToPlay = mm.sequences.trim(file.noteSequence, startTimeSeconds, file.noteSequence.totalTime);
+                } catch(e) { console.warn("Error al recortar secuencia:", e); }
+            }
 
-            player.start(seq).then(stopPlayback);
+            player.start(seqToPlay).then(() => {
+                if (player.isPlaying() && !state.isSeeking) stopPlayback();
+            });
 
-            const startTime = Date.now();
+            state.startTime = Date.now();
             state.playbackInterval = setInterval(() => {
-                const current = startAt + (Date.now() - startTime) / 1000;
-                if (current < file.noteSequence.totalTime) {
-                    seekSlider.value = current;
-                    document.getElementById('current-time').textContent = formatTime(current);
+                if (state.isSeeking) return;
+                
+                const elapsedSinceStart = (Date.now() - state.startTime) / 1000;
+                const currentTotalPos = startTimeSeconds + elapsedSinceStart;
+
+                if (currentTotalPos < file.noteSequence.totalTime) {
+                    seekSlider.value = currentTotalPos;
+                    document.getElementById('current-time').textContent = formatTime(currentTotalPos);
+                } else {
+                    stopPlayback();
                 }
-            }, 100);
+            }, 50);
         }
 
         function stopPlayback() {
             player.stop();
-            clearInterval(state.playbackInterval);
+            if(state.playbackInterval) clearInterval(state.playbackInterval);
             document.getElementById('play-icon').className = "fas fa-play";
-            document.getElementById('play-text').textContent = "ESCUCHAR";
+            document.getElementById('play-text').textContent = "REPRODUCIR";
         }
 
-        window.downloadFile = (index) => {
-            const file = state.files[index];
-            const blob = new Blob([file.transformedBinary], { type: "audio/midi" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = file.name.replace(/\.midi?$/i, '') + "_NEGATIVO.mid";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        };
-
         window.removeFile = (index) => {
+            if (state.currentIndex === index) stopPlayback();
             state.files.splice(index, 1);
             if (state.files.length === 0) {
                 step2.classList.add('hidden');
                 step1.classList.remove('hidden');
             }
             renderQueue();
-            const anyDone = state.files.some(f => f.status === 'done');
-            if (!anyDone) zipBtn.classList.add('hidden');
         };
 
         document.getElementById('clear-queue-btn').onclick = () => {
+            stopPlayback();
             state.files = [];
             step2.classList.add('hidden');
             step1.classList.remove('hidden');
             zipBtn.classList.add('hidden');
-            showStatus("Cola vaciada", "text-indigo-300");
         };
 
         document.getElementById('close-player').onclick = () => {
